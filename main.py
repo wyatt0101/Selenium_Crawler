@@ -40,80 +40,86 @@ def open_article_detail(browser):
         return False
 
 
-def extract_and_save_paper(browser, source_author, output_file):
+def safe_find_text(browser, xpath):
     try:
-        title = browser.find_element(By.XPATH, '//div[@class="wx-tit"]//h1').text
-        author = browser.find_element(By.XPATH, '//div[@class="wx-tit"]//h3[1]').text
-        institute = browser.find_element(By.XPATH, '//div[@class="wx-tit"]//h3[2]').text
-        journal = browser.find_element(By.XPATH, "//div[@class='top-tip']/span/a[1]").text
-        issue = browser.find_element(By.XPATH, "//div[@class='top-tip']/span/a[2]").text
-        page_num = browser.find_element(By.XPATH, '//p[@class="total-inform"]/span[1]').text
-        page_number = browser.find_element(By.XPATH, '//p[@class="total-inform"]/span[2]').text
-        page_count = browser.find_element(By.XPATH, '//p[@class="total-inform"]/span[3]').text
-        size = browser.find_element(By.XPATH, '//p[@class="total-inform"]/span[4]').text
-
-        df_one = pd.DataFrame([{
-            '来源作者': source_author, '期刊': journal, '年度(期)': issue,
-            '标题': title, '作者': author, '机构': institute,
-            '下载量': page_num, '页码': page_number, '页数': page_count, '大小': size
-        }])
-
-        file_exists = os.path.isfile(output_file)
-        df_one.to_csv(output_file, mode='a', index=False, header=not file_exists, encoding='gbk')
+        return browser.find_element(By.XPATH, xpath).text
     except:
-        print("论文数据提取失败")
-    finally:
-        browser.close()
-        browser.switch_to.window(browser.window_handles[2])  # 返回作者页
+        return ""
+
+
+def extract_and_save_paper(browser, source_author, output_file):
+
+    title = safe_find_text(browser, '//div[@class="wx-tit"]//h1')
+    author = safe_find_text(browser, '//div[@class="wx-tit"]//h3[1]')
+    institute = safe_find_text(browser, '//div[@class="wx-tit"]//h3[2]')
+    journal = safe_find_text(browser, "//div[@class='top-tip']/span/a[1]")
+    issue = safe_find_text(browser, "//div[@class='top-tip']/span/a[2]")
+    page_num = safe_find_text(browser, '//p[@class="total-inform"]/span[1]')
+    page_number = safe_find_text(browser, '//p[@class="total-inform"]/span[2]')
+    page_count = safe_find_text(browser, '//p[@class="total-inform"]/span[3]')
+    size = safe_find_text(browser, '//p[@class="total-inform"]/span[4]')
+
+    df_one = pd.DataFrame([{
+        '来源作者': source_author, '期刊': journal, '年度(期)': issue,
+        '标题': title, '作者': author, '机构': institute,
+        '下载量': page_num, '页码': page_number, '页数': page_count, '大小': size
+    }])
+
+    file_exists = os.path.isfile(output_file)
+    df_one.to_csv(output_file, mode='a', index=False, header=not file_exists, encoding='gbk')
+
+    browser.close()
+    browser.switch_to.window(browser.window_handles[2])  # 返回作者页
 
 
 def process_author_page(browser, output_file):
-    try:
-        author_urls = browser.find_elements(By.XPATH, "//div[@class='wx-tit']/h3[@id='authorpart']/span/a")
-        for author_url in author_urls:
 
-            source_author = author_url.get_attribute('text')
-            url = author_url.get_attribute('href')
-            browser.execute_script('window.open()')
-            browser.switch_to.window(browser.window_handles[2])
-            browser.get(url)
-            time.sleep(3)
+    author_urls = browser.find_elements(By.XPATH, "//div[@class='wx-tit']/h3[@id='authorpart']/span/a")
+    for author_url in author_urls:
 
-            last_height = browser.execute_script("return document.body.scrollHeight")
-            while True:
-                browser.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                time.sleep(1.5)
-                new_height = browser.execute_script("return document.body.scrollHeight")
-                if new_height == last_height:
-                    break
-                last_height = new_height
+        source_author = author_url.get_attribute('text')
+        print(f"正在处理：{source_author}")
 
-            while True:
-                paper_list = browser.find_elements(By.XPATH, '//div[@id="KCMS-AUTHOR-JOURNAL-LITERATURES"]/ul[@class="ebBd"]/li')
 
-                for p in paper_list:
-                    try:
-                        href3 = p.find_element(By.XPATH, "a").get_attribute('href')
-                        browser.execute_script('window.open()')
-                        browser.switch_to.window(browser.window_handles[3])
-                        browser.get(href3)
-                        extract_and_save_paper(browser, source_author, output_file)
-                    except Exception as e:
-                        print(f"单篇论文打开失败: {e}")
+        url = author_url.get_attribute('href')
+        browser.execute_script('window.open()')
+        browser.switch_to.window(browser.window_handles[2])
+        browser.get(url)
+        time.sleep(3)
 
-                try:
-                    next_button = browser.find_element(By.XPATH, '//div[@id="KCMS-AUTHOR-JOURNAL-LITERATURES-page"]/a[@class="next"]')
-                    browser.execute_script("arguments[0].click();", next_button)
-                    time.sleep(2)
-                except Exception as e:
-                    print(f"点击下一页失败: {e}")
-                    break
+        last_height = browser.execute_script("return document.body.scrollHeight")
+        while True:
+            browser.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            time.sleep(1.5)
+            new_height = browser.execute_script("return document.body.scrollHeight")
+            if new_height == last_height:
+                break
+            last_height = new_height
 
-            browser.close()
-            browser.switch_to.window(browser.window_handles[1])
-            time.sleep(1)
-    except:
-        print("作者页面处理失败")
+        while True:
+            paper_list = browser.find_elements(By.XPATH, '//div[@id="KCMS-AUTHOR-JOURNAL-LITERATURES"]/ul[@class="ebBd"]/li')
+
+            for p in paper_list:
+
+                href3 = p.find_element(By.XPATH, "a").get_attribute('href')
+                # print(p.find_element(By.XPATH, "a").get_attribute('text'))
+
+                browser.execute_script('window.open()')
+                browser.switch_to.window(browser.window_handles[3])
+                browser.get(href3)
+                extract_and_save_paper(browser, source_author, output_file)
+
+            try:
+                next_button = browser.find_element(By.XPATH, '//div[@id="KCMS-AUTHOR-JOURNAL-LITERATURES-page"]/a[@class="next"]')
+                browser.execute_script("arguments[0].click();", next_button)
+                time.sleep(2)
+            except Exception as e:
+                print(f"点击下一页失败")
+                break
+
+        browser.close()
+        browser.switch_to.window(browser.window_handles[1])
+        time.sleep(1)
 
 
 def main():
@@ -146,6 +152,7 @@ def main():
             browser.get("https://kns.cnki.net/kns8s/AdvSearch")
             time.sleep(1)
 
+        print(f"处理完成：{idx}: {journal} - {title}")
     browser.quit()
 
 
