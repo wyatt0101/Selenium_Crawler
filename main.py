@@ -73,8 +73,6 @@ def process_author_page(browser, output_file):
         for author_url in author_urls:
 
             source_author = author_url.get_attribute('text')
-            if source_author == '彭红枫1':
-                continue
             url = author_url.get_attribute('href')
             browser.execute_script('window.open()')
             browser.switch_to.window(browser.window_handles[2])
