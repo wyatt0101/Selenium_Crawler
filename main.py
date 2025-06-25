@@ -114,7 +114,7 @@ def process_author_page(browser, output_file):
                 browser.execute_script("arguments[0].click();", next_button)
                 time.sleep(2)
             except Exception as e:
-                print(f"点击下一页失败")
+                print(f"处理完成：{source_author}")
                 break
 
         browser.close()
@@ -123,8 +123,8 @@ def process_author_page(browser, output_file):
 
 
 def main():
-    input_file = './author/待爬虫数据0613.xlsx'
-    output_file = './author/待爬虫数据0613_result.csv'
+    input_file = './待爬虫数据.xlsx'
+    output_file = './待爬虫数据_result.csv'
     df = pd.read_excel(input_file)
 
     browser = setup_browser()
@@ -157,4 +157,5 @@ def main():
 
 
 if __name__ == '__main__':
+    # 5741
     main()
